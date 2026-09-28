@@ -1,0 +1,54 @@
+<main>
+  <div class="p-4">
+
+    <div class="flex justify-between items-center mb-4">
+
+      <h1 class="text-2xl font-bold">
+        Products ({{ products.length }})
+      </h1>
+
+    </div>
+
+    @if (products.length > 0) {
+
+      <ul class="list-disc list-inside">
+
+        @for (product of products; track product.id) {
+
+          <li class="mb-2 p-4 bg-gray-100 rounded-lg shadow-sm">
+
+            <div>
+              <span class="font-semibold">
+                {{ product.name }}
+              </span>
+
+              -
+
+              <span class="text-gray-600">
+                Price: {{ product.price }}
+              </span>
+
+              <br />
+
+              <span>
+                {{ product.description }}
+              </span>
+
+            </div>
+
+          </li>
+
+        }
+
+      </ul>
+
+    } @else {
+
+      <p class="text-gray-500">
+        No products found!
+      </p>
+
+    }
+
+  </div>
+</main>

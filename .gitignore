@@ -1,0 +1,29 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Maven
+target/
+
+# Frontend
+node_modules/
+dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local database data
+volume-data/
+product-service/data/
+order-service/mysql/
+inventory-service/docker/mysql/data/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
