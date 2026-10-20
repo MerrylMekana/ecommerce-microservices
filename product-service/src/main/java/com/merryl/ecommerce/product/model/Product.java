@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 public class Product {
     @Id   //to specify the unique identifier
     private String id;
+    String skuCode;
     private String name;
     private BigDecimal price;
     private String description;

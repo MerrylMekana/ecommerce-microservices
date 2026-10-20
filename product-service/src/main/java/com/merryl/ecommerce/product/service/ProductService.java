@@ -18,20 +18,21 @@ public class ProductService {
     //don't have to write getters and setters for records like we do in class
     public ProductResponse createProduct(ProductRequest productRequest) {
         Product product = Product.builder()
+                .skuCode(productRequest.skuCode())
                 .name(productRequest.name())
                 .description(productRequest.description())
                 .price(productRequest.price())
                 .build();
         productRepository.save(product);
         log.info("Product {} created successfully", product.getId());
-        return new ProductResponse(product.getId(), product.getName(), product.getDescription(), product.getPrice());
+        return new ProductResponse(product.getId(), product.getSkuCode(), product.getName(), product.getDescription(), product.getPrice());
     }
 
     public List<ProductResponse> getAllProducts() {
         //map list of product objects to productResponse
         return productRepository.findAll()
                 .stream()
-                .map(product -> new ProductResponse(product.getId(), product.getName(), product.getDescription(), product.getPrice()))
+                .map(product -> new ProductResponse(product.getId(), product.getSkuCode(), product.getName(), product.getDescription(), product.getPrice()))
                 .toList();
     }
 }

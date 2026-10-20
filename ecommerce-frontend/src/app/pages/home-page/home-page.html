@@ -1,38 +1,89 @@
+
 <main>
   <div class="p-4">
 
     <div class="flex justify-between items-center mb-4">
-
       <h1 class="text-2xl font-bold">
         Products ({{ products.length }})
       </h1>
-
     </div>
 
-    @if (products.length > 0) {
+    @if (loading) {
 
-      <ul class="list-disc list-inside">
+      <p class="text-gray-500">
+        Loading products...
+      </p>
+
+    } @else if (error) {
+
+      <p class="text-red-500">
+        {{ error }}
+      </p>
+
+    } @else if (products.length === 0) {
+
+      <p class="text-gray-500">
+        No products found!
+      </p>
+
+    } @else {
+
+      @if (orderSuccess) {
+        <div class="mb-4 p-4 bg-green-100 text-green-700 rounded">
+          Order placed successfully!
+        </div>
+      }
+
+      @if (orderError) {
+        <div class="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          {{ orderError }}
+        </div>
+      }
+
+      <ul class="list-none">
 
         @for (product of products; track product.id) {
 
-          <li class="mb-2 p-4 bg-gray-100 rounded-lg shadow-sm">
+          <li class="mb-4 p-4 bg-gray-100 rounded-lg shadow-sm">
 
-            <div>
-              <span class="font-semibold">
-                {{ product.name }}
-              </span>
+            <div class="flex justify-between items-center">
 
-              -
+              <div>
+                <h2 class="font-semibold text-lg">
+                  {{ product.name }}
+                </h2>
 
-              <span class="text-gray-600">
-                Price: {{ product.price }}
-              </span>
+                <p class="text-gray-600">
+                  SKU: {{ product.skuCode }}
+                </p>
 
-              <br />
+                <p class="text-gray-600">
+                  Price: {{ product.price }}
+                </p>
 
-              <span>
-                {{ product.description }}
-              </span>
+                <p>
+                  {{ product.description }}
+                </p>
+              </div>
+
+              <div class="flex items-center gap-3">
+
+                <input
+                  #quantityInput
+                  type="number"
+                  min="1"
+                  value="1"
+                  class="w-20 border rounded-lg p-2"
+                />
+
+                <button
+                  type="button"
+                  (click)="orderProduct(product, +quantityInput.value)"
+                  class="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
+                  Order Now
+                </button>
+
+              </div>
 
             </div>
 
@@ -42,13 +93,7 @@
 
       </ul>
 
-    } @else {
-
-      <p class="text-gray-500">
-        No products found!
-      </p>
-
-    }
+    }  
 
   </div>
 </main>

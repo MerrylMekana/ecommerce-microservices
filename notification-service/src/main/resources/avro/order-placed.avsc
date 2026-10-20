@@ -1,0 +1,48 @@
+{
+  "type": "record",
+  "name": "OrderPlacedEvent",
+  "namespace": "com.merryl.ecommerce.order.event",
+  "fields": [
+    {
+      "name": "orderNumber",
+      "type": "string"
+    },
+    {
+      "name": "email",
+      "type": "string"
+    },
+    {
+      "name": "firstName",
+      "type": "string"
+    },
+    {
+      "name": "lastName",
+      "type": "string"
+    },
+    {
+      "name": "items",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "OrderItem",
+          "fields": [
+            {
+              "name": "skuCode",
+              "type": "string"
+            },
+            {
+              "name": "unitPrice",
+              "type": "string"
+            },
+            {
+              "name": "quantity",
+              "type": "int"
+            }
+          ]
+        }
+      },
+      "default": []
+    }
+  ]
+}

@@ -15,8 +15,10 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public String placeOrder(@RequestBody OrderRequest orderRequest) {
-        orderService.placeOrder(orderRequest);
+    public String placeOrder(
+            @RequestBody OrderRequest orderRequest,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+        orderService.placeOrder(orderRequest, idempotencyKey);
         return "Order Placed Successfully";
     }
 }
