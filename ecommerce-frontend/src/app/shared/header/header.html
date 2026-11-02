@@ -1,48 +1,57 @@
 
-<nav class="bg-white border border-gray-200 px-2 sm:px-4 py-2.5 rounded shadow">
-  <div class="container flex flex-wrap justify-between items-center mx-auto">
-
-    <!-- Shop name -->
-    <a href="/" class="flex items-center">
-      <span class="self-center text-xl font-semibold whitespace-nowrap">
-        Spring Boot Microservices Shop
-      </span>
+<header class="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+    <a routerLink="/" class="flex items-center gap-3" aria-label="E-Commerce Microservices Demo home">
+      <span class="grid size-10 place-items-center rounded-full bg-accent text-xs font-semibold tracking-wide text-white">EC</span>
+      <span class="text-sm font-semibold tracking-tight text-ink sm:text-xl">E-Commerce Microservices Demo</span>
     </a>
 
-    <!-- Authentication -->
-    <div class="flex items-center">
+    <button
+      class="inline-flex size-10 items-center justify-center rounded-lg border border-line text-ink md:hidden"
+      type="button"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="primary-navigation"
+      aria-label="Toggle navigation"
+      (click)="menuOpen.update(open => !open)">
+      <span class="text-xl" aria-hidden="true">{{ menuOpen() ? '×' : '☰' }}</span>
+    </button>
 
-      @if (isAuthenticated) {
-
-        <span class="text-gray-700 mr-4">
-          Welcome {{ username }}
-        </span>
-
-        <a
-          routerLink="/add-product"
-          class="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
-          Add Product
+    <nav
+      id="primary-navigation"
+      class="absolute left-0 right-0 top-full border-b border-line bg-white px-4 py-5 shadow-lg md:static md:flex md:items-center md:gap-8 md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+      [class.hidden]="!menuOpen()">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center">
+        <a routerLink="/" routerLinkActive="text-accent" [routerLinkActiveOptions]="{ exact: true }"
+           class="text-sm font-medium text-muted transition hover:text-accent" (click)="menuOpen.set(false)">Home</a>
+        <a routerLink="/products" routerLinkActive="text-accent"
+           class="text-sm font-medium text-muted transition hover:text-accent" (click)="menuOpen.set(false)">Products</a>
+        <a routerLink="/cart" routerLinkActive="text-accent"
+           class="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-accent" (click)="menuOpen.set(false)">
+          Cart
+          <span class="grid min-w-6 place-items-center rounded-full bg-accent-soft px-1.5 py-0.5 text-xs font-semibold text-accent"
+                aria-live="polite" [attr.aria-label]="cartService.itemCount() + ' items in cart'">{{ cartService.itemCount() }}</span>
         </a>
-
-        <button
-          type="button"
-          (click)="logout()"
-          class="text-gray-700 hover:text-blue-700 cursor-pointer">
-          Logout
-        </button>
-
-      } @else {
-
-        <button
-          type="button"
-          (click)="login()"
-          class="text-gray-700 hover:text-blue-700 cursor-pointer">
-          Login
-        </button>
-
-      }
-
-    </div>
-
+        @if (isAuthenticated()) {
+          @if (isAdmin()) {
+            <a routerLink="/add-product" routerLinkActive="text-accent"
+               class="text-sm font-medium text-muted transition hover:text-accent" (click)="menuOpen.set(false)">Catalog management</a>
+            <a routerLink="/inventory" routerLinkActive="text-accent"
+               class="text-sm font-medium text-muted transition hover:text-accent" (click)="menuOpen.set(false)">Inventory</a>
+          }
+          <div class="flex items-center gap-3 border-t border-line pt-4 md:border-0 md:pt-0">
+            @if (username()) {
+              <span class="max-w-36 truncate text-sm text-muted" [title]="username()">Hi, {{ username() }}</span>
+            }
+            <button type="button" (click)="logout(); menuOpen.set(false)"
+                    class="text-sm font-semibold text-accent transition hover:text-accent-dark">Sign out</button>
+          </div>
+        } @else {
+          <button type="button" (click)="login(); menuOpen.set(false)"
+                  class="w-fit rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-dark">
+            Sign in
+          </button>
+        }
+      </div>
+    </nav>
   </div>
-</nav>
+</header>

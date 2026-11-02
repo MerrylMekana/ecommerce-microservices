@@ -2,9 +2,12 @@ package com.merryl.ecommerce.inventory;
 
 import com.merryl.ecommerce.inventory.dto.InventoryReservationRequest;
 import com.merryl.ecommerce.inventory.dto.InventoryReservationItemRequest;
+import com.merryl.ecommerce.inventory.dto.InventoryStockRequest;
 import com.merryl.ecommerce.inventory.model.Inventory;
 import com.merryl.ecommerce.inventory.repository.InventoryRepository;
 import com.merryl.ecommerce.inventory.service.InventoryService;
+import com.merryl.ecommerce.inventory.service.InventoryConflictException;
+import com.merryl.ecommerce.inventory.service.InsufficientStockException;
 import com.merryl.ecommerce.inventory.service.ReservationConflictException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.mysql.MySQLContainer;
 
 import java.net.URI;
@@ -22,6 +28,7 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -30,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 //@Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -47,8 +56,17 @@ class InventoryServiceApplicationTests {
 	@LocalServerPort
 	private Integer port;
 
+	@MockitoBean
+	private JwtDecoder jwtDecoder;
+
 	static {
 		mySQLContainer.start();
+	}
+
+	@BeforeEach
+	void setupJwtDecoder() {
+		when(jwtDecoder.decode("admin-token")).thenReturn(jwt("admin-token", "ADMIN"));
+		when(jwtDecoder.decode("user-token")).thenReturn(jwt("user-token", "CUSTOMER"));
 	}
 
 	@Test
@@ -115,6 +133,38 @@ class InventoryServiceApplicationTests {
 			assertEquals(0, inventoryRepository.findAll().stream()
 					.filter(inventory -> skuCode.equals(inventory.getSkuCode()))
 					.findFirst().orElseThrow().getQuantity());
+		} finally {
+			executor.shutdownNow();
+		}
+	}
+
+	@Test
+	void manualRemovalAndOrderReservationCannotBothConsumeTheSameUnit() throws Exception {
+		String skuCode = uniqueSku();
+		inventoryRepository.saveAndFlush(new Inventory(null, skuCode, 1));
+		var start = new CountDownLatch(1);
+		var executor = Executors.newFixedThreadPool(2);
+		try {
+			var remove = executor.submit(() -> {
+				start.await();
+				try {
+					inventoryService.removeStock(skuCode, 1);
+					return "MANUAL_REMOVAL";
+				} catch (InsufficientStockException exception) {
+					return "MANUAL_REJECTED";
+				}
+			});
+			var reserve = executor.submit(() -> {
+				start.await();
+				return inventoryService.reserve(new InventoryReservationRequest(
+						"manual-race-" + UUID.randomUUID(), skuCode, 1)).status();
+			});
+			start.countDown();
+
+			var outcomes = List.of(remove.get(10, TimeUnit.SECONDS), reserve.get(10, TimeUnit.SECONDS));
+			assertEquals(1L, outcomes.stream().filter("MANUAL_REMOVAL"::equals).count()
+					+ outcomes.stream().filter("RESERVED"::equals).count());
+			assertEquals(0, quantity(skuCode));
 		} finally {
 			executor.shutdownNow();
 		}
@@ -322,6 +372,113 @@ class InventoryServiceApplicationTests {
 	}
 
 	@Test
+	void initializesStockIncludingZeroAndRepeatingSameRequestDoesNotResetStock() {
+		String skuCode = uniqueSku();
+		var initialized = inventoryService.initializeStock(new InventoryStockRequest(skuCode, 0));
+		assertEquals(0, initialized.quantity());
+		assertEquals(initialized, inventoryService.initializeStock(new InventoryStockRequest(skuCode, 0)));
+
+		inventoryService.addStock(skuCode, 4);
+		Assertions.assertThrows(InventoryConflictException.class,
+				() -> inventoryService.initializeStock(new InventoryStockRequest(skuCode, 0)));
+		assertEquals(4, quantity(skuCode));
+	}
+
+	@Test
+	void manualAdjustmentsArePositiveAndCannotMakeInventoryNegative() {
+		String skuCode = uniqueSku();
+		inventoryRepository.saveAndFlush(new Inventory(null, skuCode, 5));
+
+		assertEquals(8, inventoryService.addStock(skuCode, 3).quantity());
+		assertEquals(6, inventoryService.removeStock(skuCode, 2).quantity());
+		Assertions.assertThrows(InsufficientStockException.class,
+				() -> inventoryService.removeStock(skuCode, 7));
+		assertEquals(6, quantity(skuCode));
+
+		Assertions.assertThrows(IllegalArgumentException.class,
+				() -> inventoryService.addStock(skuCode, 0));
+		Assertions.assertThrows(IllegalArgumentException.class,
+				() -> inventoryService.removeStock(skuCode, -1));
+		Assertions.assertThrows(IllegalArgumentException.class,
+				() -> inventoryService.initializeStock(new InventoryStockRequest(uniqueSku(), -1)));
+	}
+
+	@Test
+	void stockManagementEndpointsReturnInventoryAndMeaningfulStatuses() throws Exception {
+		String skuCode = uniqueSku();
+		HttpClient client = HttpClient.newHttpClient();
+		String baseUrl = "http://localhost:" + port + "/api/inventory/stock";
+
+		HttpResponse<String> initialize = client.send(HttpRequest.newBuilder(URI.create(baseUrl))
+				.header("Content-Type", "application/json")
+				.header("Authorization", "Bearer admin-token")
+				.POST(BodyPublishers.ofString("""
+						{"skuCode":"%s","quantity":2}
+						""".formatted(skuCode)))
+				.build(), BodyHandlers.ofString());
+		assertEquals(201, initialize.statusCode());
+		assertTrue(initialize.body().contains("\"quantity\":2"));
+
+		HttpResponse<String> add = client.send(HttpRequest.newBuilder(URI.create(baseUrl + "/" + skuCode + "/add"))
+				.header("Content-Type", "application/json")
+				.header("Authorization", "Bearer admin-token")
+				.POST(BodyPublishers.ofString("{\"quantity\":3}"))
+				.build(), BodyHandlers.ofString());
+		assertEquals(200, add.statusCode());
+		assertTrue(add.body().contains("\"quantity\":5"));
+
+		HttpResponse<String> excessiveRemove = client.send(
+				HttpRequest.newBuilder(URI.create(baseUrl + "/" + skuCode + "/remove"))
+						.header("Content-Type", "application/json")
+						.header("Authorization", "Bearer admin-token")
+						.POST(BodyPublishers.ofString("{\"quantity\":6}"))
+						.build(), BodyHandlers.ofString());
+		assertEquals(409, excessiveRemove.statusCode());
+		assertEquals(5, quantity(skuCode));
+
+		HttpResponse<String> invalidQuantity = client.send(
+				HttpRequest.newBuilder(URI.create(baseUrl + "/" + skuCode + "/remove"))
+						.header("Content-Type", "application/json")
+						.header("Authorization", "Bearer admin-token")
+						.POST(BodyPublishers.ofString("{\"quantity\":0}"))
+						.build(), BodyHandlers.ofString());
+		assertEquals(400, invalidQuantity.statusCode());
+		assertEquals(5, quantity(skuCode));
+
+		HttpResponse<String> stockList = client.send(
+				HttpRequest.newBuilder(URI.create(baseUrl))
+						.header("Authorization", "Bearer admin-token").GET().build(), BodyHandlers.ofString());
+		assertEquals(200, stockList.statusCode());
+		assertTrue(stockList.body().contains("\"skuCode\":\"" + skuCode + "\""));
+	}
+
+	@Test
+	void stockManagementEndpointsRequireAdmin() throws Exception {
+		String baseUrl = "http://localhost:" + port + "/api/inventory/stock";
+		String body = "{\"skuCode\":\"" + uniqueSku() + "\",\"quantity\":2}";
+
+		HttpResponse<String> unauthenticated = HttpClient.newHttpClient().send(
+				HttpRequest.newBuilder(URI.create(baseUrl)).header("Content-Type", "application/json")
+						.POST(BodyPublishers.ofString(body)).build(), BodyHandlers.ofString());
+		assertEquals(401, unauthenticated.statusCode());
+
+		HttpResponse<String> forbidden = HttpClient.newHttpClient().send(
+				HttpRequest.newBuilder(URI.create(baseUrl)).header("Content-Type", "application/json")
+						.header("Authorization", "Bearer user-token")
+						.POST(BodyPublishers.ofString(body)).build(), BodyHandlers.ofString());
+		assertEquals(403, forbidden.statusCode());
+
+		HttpResponse<String> customerReservation = HttpClient.newHttpClient().send(
+				HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/inventory/reservations"))
+						.header("Content-Type", "application/json")
+						.POST(BodyPublishers.ofString("""
+								{"reservationId":"customer-checkout","skuCode":"%s","quantity":1}
+								""".formatted(uniqueSku())))
+						.build(), BodyHandlers.ofString());
+		assertEquals(200, customerReservation.statusCode());
+	}
+
+	@Test
 	void reservationAndReleaseAreAvailableThroughHttp() throws Exception {
 		String skuCode = uniqueSku();
 		String reservationId = "http-" + UUID.randomUUID();
@@ -352,6 +509,13 @@ class InventoryServiceApplicationTests {
 
 	private String uniqueSku() {
 		return "TEST-" + UUID.randomUUID();
+	}
+
+	private static Jwt jwt(String token, String role) {
+		return Jwt.withTokenValue(token)
+				.header("alg", "none")
+				.claim("realm_access", Map.of("roles", List.of(role)))
+				.build();
 	}
 
 	private int quantity(String skuCode) {

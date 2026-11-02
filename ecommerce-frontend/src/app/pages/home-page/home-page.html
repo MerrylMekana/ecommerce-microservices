@@ -1,99 +1,92 @@
-
-<main>
-  <div class="p-4">
-
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">
-        Products ({{ products.length }})
+<section class="relative overflow-hidden bg-[#e9eee8]">
+  <div class="mx-auto grid max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-14">
+    <div class="max-w-2xl">
+      <p class="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-accent">E-Commerce Microservices Demo</p>
+      <h1 class="text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+        Shop our product collection.
       </h1>
+      <p class="mt-6 max-w-xl text-base leading-7 text-muted sm:text-lg">
+        Browse the live catalog and check out securely with a multi-item cart.
+      </p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <a routerLink="/products"
+           class="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition hover:bg-accent-dark">
+          Explore our collection
+        </a>
+        <a routerLink="/products"
+           class="inline-flex min-h-12 items-center justify-center rounded-full border border-[#cbd5cc] px-7 text-sm font-semibold text-ink transition hover:bg-white">
+          View the full collection
+        </a>
+      </div>
+      <div class="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
+        <span>Products from the live catalog</span>
+        <span aria-hidden="true">·</span>
+        <span>Simple, secure checkout</span>
+      </div>
     </div>
-
-    @if (loading) {
-
-      <p class="text-gray-500">
-        Loading products...
-      </p>
-
-    } @else if (error) {
-
-      <p class="text-red-500">
-        {{ error }}
-      </p>
-
-    } @else if (products.length === 0) {
-
-      <p class="text-gray-500">
-        No products found!
-      </p>
-
-    } @else {
-
-      @if (orderSuccess) {
-        <div class="mb-4 p-4 bg-green-100 text-green-700 rounded">
-          Order placed successfully!
+    <div class="relative mx-auto flex aspect-[4/3] w-full max-w-xl items-center justify-center overflow-hidden rounded-[2rem] bg-[#d7e1d7]">
+      <div class="absolute left-[12%] top-[12%] size-32 rounded-full border border-white/70 sm:size-48"></div>
+      <div class="absolute bottom-[10%] right-[9%] size-44 rounded-full bg-[#c1d1c3] sm:size-64"></div>
+      <div class="relative grid h-[68%] w-[65%] place-items-center rounded-[1.5rem] border border-white/70 bg-[#eff2ec] shadow-[0_30px_60px_-30px_rgba(32,39,35,0.35)]">
+        <div class="flex h-[65%] w-[58%] items-center justify-center rounded-[1.25rem] bg-[#c6d4c7]">
+          <span class="text-5xl font-light tracking-tight text-accent sm:text-7xl" aria-hidden="true">E·C</span>
         </div>
-      }
-
-      @if (orderError) {
-        <div class="mb-4 p-4 bg-red-100 text-red-700 rounded">
-          {{ orderError }}
-        </div>
-      }
-
-      <ul class="list-none">
-
-        @for (product of products; track product.id) {
-
-          <li class="mb-4 p-4 bg-gray-100 rounded-lg shadow-sm">
-
-            <div class="flex justify-between items-center">
-
-              <div>
-                <h2 class="font-semibold text-lg">
-                  {{ product.name }}
-                </h2>
-
-                <p class="text-gray-600">
-                  SKU: {{ product.skuCode }}
-                </p>
-
-                <p class="text-gray-600">
-                  Price: {{ product.price }}
-                </p>
-
-                <p>
-                  {{ product.description }}
-                </p>
-              </div>
-
-              <div class="flex items-center gap-3">
-
-                <input
-                  #quantityInput
-                  type="number"
-                  min="1"
-                  value="1"
-                  class="w-20 border rounded-lg p-2"
-                />
-
-                <button
-                  type="button"
-                  (click)="orderProduct(product, +quantityInput.value)"
-                  class="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
-                  Order Now
-                </button>
-
-              </div>
-
-            </div>
-
-          </li>
-
-        }
-
-      </ul>
-
-    }  
-
+        <span class="absolute bottom-5 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Product collection</span>
+      </div>
+    </div>
   </div>
-</main>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Browse the catalog</p>
+      <h2 class="mt-2 text-3xl font-semibold tracking-tight text-ink">Explore our collection</h2>
+    </div>
+    <a routerLink="/products" class="w-fit text-sm font-semibold text-accent hover:text-accent-dark">View the full collection <span aria-hidden="true">→</span></a>
+  </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading products" aria-busy="true">
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <div class="animate-pulse overflow-hidden rounded-2xl border border-line bg-white">
+          <div class="aspect-[4/3] bg-[#e8ece7]"></div>
+          <div class="space-y-3 p-5">
+            <div class="h-4 w-3/4 rounded bg-[#e8ece7]"></div>
+            <div class="h-4 w-1/3 rounded bg-[#e8ece7]"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="rounded-2xl border border-line bg-white px-6 py-10 text-center" role="alert">
+      <p class="font-medium text-ink">{{ error() }}</p>
+      @if (error().includes('sign in')) {
+        <a routerLink="/products" class="mt-4 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white">Continue to products</a>
+      }
+    </div>
+  } @else if (products().length === 0) {
+    <div class="rounded-2xl border border-line bg-white px-6 py-10 text-center text-muted">
+      The catalog is empty right now. Please check back soon.
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      @for (product of products().slice(0, 4); track product.id ?? product.skuCode) {
+        <app-product-card [product]="product" (added)="announceAdded($event)"></app-product-card>
+      }
+    </div>
+  }
+</section>
+<app-cart-toast [message]="feedback()" (dismiss)="feedback.set('')"></app-cart-toast>
+
+<section class="bg-accent text-white">
+  <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Ready to browse?</p>
+      <h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Explore the full product catalog.</h2>
+    </div>
+    <a routerLink="/products" class="inline-flex min-h-12 w-fit items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-accent transition hover:bg-[#eef2ed]">
+      Shop products
+    </a>
+  </div>
+</section>

@@ -1,0 +1,25 @@
+<section class="mx-auto flex max-w-3xl flex-col items-center px-4 py-12 text-center sm:py-20">
+  <div class="grid size-16 place-items-center rounded-full bg-accent-soft text-2xl font-semibold text-accent" aria-hidden="true">✓</div>
+  @if (summary()) {
+    <p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Order confirmed</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Thank you for your order.</h1>
+    <p class="mt-3 max-w-xl text-sm leading-6 text-muted">Your order was placed successfully. A confirmation will be sent to the email address you provided.</p>
+    <div class="mt-8 w-full rounded-2xl border border-line bg-white p-5 text-left sm:p-7">
+      <h2 class="text-lg font-semibold text-ink">Purchased items</h2>
+      <div class="mt-5 divide-y divide-line">
+        @for (item of summary()!.items; track item.skuCode) {
+          <div class="flex justify-between gap-4 py-4 text-sm">
+            <div><p class="font-medium text-ink">{{ item.name }}</p><p class="mt-1 text-xs text-muted">{{ item.skuCode }} · Quantity {{ item.quantity }}</p></div>
+            <span class="shrink-0 font-medium text-ink">{{ formatPrice(item.price * item.quantity) }}</span>
+          </div>
+        }
+      </div>
+      <div class="flex justify-between border-t border-line pt-5 text-base font-semibold text-ink"><span>Total</span><span>{{ formatPrice(summary()!.total) }}</span></div>
+    </div>
+  } @else {
+    <p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Welcome back</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Your shopping journey starts here.</h1>
+    <p class="mt-3 max-w-xl text-sm leading-6 text-muted">We don't have a recent order summary in this browser. You can continue exploring the current collection.</p>
+  }
+  <a routerLink="/products" class="mt-8 inline-flex min-h-12 items-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition hover:bg-accent-dark">Continue shopping</a>
+</section>

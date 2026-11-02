@@ -4,4 +4,5 @@ import com.merryl.ecommerce.product.model.Product;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface ProductRepository extends MongoRepository<Product, String> {
+    boolean existsBySkuCodeIgnoreCase(String skuCode);
 }

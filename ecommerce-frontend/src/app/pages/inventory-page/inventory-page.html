@@ -1,0 +1,93 @@
+<section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+  <div class="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+    <aside class="h-fit rounded-2xl border border-line bg-white p-5">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Management</p>
+      <h2 class="mt-2 text-lg font-semibold text-ink">Catalog management</h2>
+      <nav class="mt-4 flex gap-3 text-sm lg:flex-col" aria-label="Catalog management">
+        <a routerLink="/add-product" class="font-medium text-muted hover:text-accent">Add product</a>
+        <a routerLink="/inventory" class="font-semibold text-accent">Inventory</a>
+      </nav>
+    </aside>
+
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Inventory management</p>
+          <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">Product stock</h1>
+          <p class="mt-2 text-sm text-muted">Adjust available stock; checkout reservations remain managed by the order flow.</p>
+        </div>
+        <button type="button" (click)="load()" [disabled]="loading()"
+                class="min-h-10 rounded-full border border-line px-4 text-sm font-semibold text-ink hover:bg-white disabled:opacity-50">
+          Refresh
+        </button>
+      </div>
+
+      @if (loading()) {
+        <div class="mt-6 animate-pulse space-y-3" aria-busy="true" aria-label="Loading inventory">
+          @for (item of [1, 2, 3]; track item) { <div class="h-24 rounded-2xl bg-[#e8ece7]"></div> }
+        </div>
+      } @else if (error()) {
+        <div class="mt-6 rounded-2xl border border-line bg-white p-8 text-center" role="alert">
+          <p class="text-sm text-muted">{{ error() }}</p>
+          <button type="button" (click)="load()" class="mt-4 text-sm font-semibold text-accent">Try again</button>
+        </div>
+      } @else if (rows().length === 0) {
+        <div class="mt-6 rounded-2xl border border-line bg-white p-8 text-center">
+          <h2 class="font-semibold text-ink">No products to manage</h2>
+          <p class="mt-2 text-sm text-muted">Create a product before managing its inventory.</p>
+          <a routerLink="/add-product" class="mt-4 inline-flex text-sm font-semibold text-accent">Add product</a>
+        </div>
+      } @else {
+        <div class="mt-6 overflow-hidden rounded-2xl border border-line bg-white">
+          <div class="hidden grid-cols-[minmax(10rem,1fr)_minmax(8rem,0.8fr)_8rem_minmax(18rem,1.4fr)] gap-4 bg-[#f5f6f3] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted md:grid">
+            <span>Product</span><span>SKU</span><span>Current stock</span><span>Stock actions</span>
+          </div>
+          @for (row of rows(); track row.product.skuCode) {
+            <article class="grid gap-4 border-t border-line p-4 first:border-t-0 md:grid-cols-[minmax(10rem,1fr)_minmax(8rem,0.8fr)_8rem_minmax(18rem,1.4fr)] md:items-center md:px-5">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-muted md:hidden">Product</p>
+                <p class="font-semibold text-ink">{{ row.product.name }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-muted md:hidden">SKU</p>
+                <p class="break-all text-sm text-muted">{{ row.product.skuCode }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-muted md:hidden">Current stock</p>
+                @if (row.stock) {
+                  <p class="font-semibold text-ink">{{ row.stock.quantity }}</p>
+                } @else {
+                  <p class="text-sm font-medium text-amber-800">Not initialized</p>
+                }
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-muted md:hidden">Stock actions</p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <label class="sr-only" [for]="'quantity-' + row.product.skuCode">Quantity for {{ row.product.name }}</label>
+                  <input [id]="'quantity-' + row.product.skuCode" type="number"
+                         [min]="row.stock ? 1 : 0" max="2147483647" step="1"
+                         [value]="quantityFor(row.product.skuCode, !!row.stock)"
+                         (input)="setQuantity(row.product.skuCode, $event)"
+                         class="h-10 w-24 rounded-lg border border-line px-3 text-sm text-ink focus:border-accent focus:outline-none">
+                  @if (row.stock) {
+                    <button type="button" (click)="add(row)" [disabled]="!!busySku()"
+                            class="min-h-10 rounded-full bg-accent px-4 text-xs font-semibold text-white hover:bg-accent-dark disabled:opacity-50">Add stock</button>
+                    <button type="button" (click)="remove(row)" [disabled]="!!busySku()"
+                            class="min-h-10 rounded-full border border-line px-4 text-xs font-semibold text-ink hover:bg-paper disabled:opacity-50">Remove stock</button>
+                  } @else {
+                    <button type="button" (click)="initialize(row)" [disabled]="!!busySku()"
+                            class="min-h-10 rounded-full bg-accent px-4 text-xs font-semibold text-white hover:bg-accent-dark disabled:opacity-50">Initialize</button>
+                  }
+                </div>
+                @if (rowErrors()[row.product.skuCode]) {
+                  <p class="mt-2 text-xs text-rose-700" role="alert">{{ rowErrors()[row.product.skuCode] }}</p>
+                }
+              </div>
+            </article>
+          }
+        </div>
+        <p class="sr-only" aria-live="polite">{{ feedback() }}</p>
+      }
+    </div>
+  </div>
+</section>

@@ -1,0 +1,81 @@
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+  <div class="flex flex-col gap-2 border-b border-line pb-7 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your selection</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Shopping cart</h1>
+    </div>
+    @if (cartService.itemCount() > 0) {
+      <p class="text-sm text-muted">{{ cartService.itemCount() }} {{ cartService.itemCount() === 1 ? 'item' : 'items' }}</p>
+    }
+  </div>
+
+  @if (cartService.items().length === 0) {
+    <div class="my-10 rounded-3xl border border-line bg-white px-6 py-14 text-center sm:py-20">
+      <div class="mx-auto grid size-16 place-items-center rounded-full bg-accent-soft text-2xl text-accent" aria-hidden="true">◇</div>
+      <h2 class="mt-5 text-xl font-semibold text-ink">Your cart is waiting for something good.</h2>
+      <p class="mt-2 text-sm text-muted">Explore the collection and add products you love.</p>
+      <a routerLink="/products" class="mt-6 inline-flex min-h-12 items-center rounded-full bg-accent px-6 text-sm font-semibold text-white hover:bg-accent-dark">Browse products</a>
+    </div>
+  } @else if (loading()) {
+    <div class="my-8 grid animate-pulse gap-8 lg:grid-cols-[1fr_22rem]" aria-busy="true" aria-label="Loading cart products">
+      <div class="space-y-4">@for (placeholder of [1, 2, 3]; track placeholder) { <div class="h-36 rounded-2xl bg-[#e8ece7]"></div> }</div>
+      <div class="h-64 rounded-2xl bg-[#e8ece7]"></div>
+    </div>
+  } @else if (error()) {
+    <div class="my-8 rounded-2xl border border-line bg-white p-8 text-center" role="alert">
+      <p class="text-sm text-muted">{{ error() }}</p>
+      <button type="button" (click)="loadProducts()" class="mt-4 text-sm font-semibold text-accent">Try again</button>
+    </div>
+  } @else {
+    <div class="grid gap-8 py-8 lg:grid-cols-[1fr_22rem]">
+      <div class="space-y-4">
+        @for (line of lines(); track line.entry.skuCode) {
+          <article class="grid gap-4 rounded-2xl border border-line bg-white p-4 sm:grid-cols-[9rem_1fr_auto] sm:items-center sm:p-5">
+            <div class="grid aspect-[4/3] place-items-center rounded-xl bg-[#e8ece7] text-3xl font-light text-accent" aria-hidden="true">
+              {{ line.product?.name?.slice(0, 1) ?? '?' }}
+            </div>
+            <div class="min-w-0">
+              @if (line.product) {
+                <a [routerLink]="['/products', line.product.skuCode]" class="font-semibold text-ink hover:text-accent">{{ line.product.name }}</a>
+                <p class="mt-1 text-xs uppercase tracking-wide text-muted">SKU · {{ line.product.skuCode }}</p>
+                <p class="mt-2 text-sm font-medium text-ink">{{ formatPrice(line.product.price) }}</p>
+              } @else {
+                <h2 class="font-semibold text-ink">Product no longer available</h2>
+                <p class="mt-1 text-xs uppercase tracking-wide text-muted">SKU · {{ line.entry.skuCode }}</p>
+                <p class="mt-2 text-sm text-rose-700">Remove this item to continue to checkout.</p>
+              }
+            </div>
+            <div class="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+              <app-quantity-control [value]="line.entry.quantity" label="Cart quantity"
+                                    (valueChange)="updateQuantity(line.entry.skuCode, $event)"></app-quantity-control>
+              <button type="button" (click)="remove(line.entry.skuCode)"
+                      class="text-xs font-semibold text-muted underline underline-offset-4 transition hover:text-rose-700">Remove</button>
+            </div>
+          </article>
+        }
+        <button type="button" (click)="clearCart()" class="text-sm font-medium text-muted underline underline-offset-4 hover:text-ink">Clear cart</button>
+        <p class="sr-only" aria-live="polite">{{ feedback() }}</p>
+      </div>
+
+      <aside class="h-fit rounded-2xl border border-line bg-white p-5 sm:p-6">
+        <h2 class="text-lg font-semibold text-ink">Order summary</h2>
+        <div class="mt-5 flex justify-between border-b border-line pb-4 text-sm text-muted">
+          <span>Items ({{ cartService.itemCount() }})</span><span>{{ formatPrice(subtotal()) }}</span>
+        </div>
+        <div class="flex justify-between py-4 text-base font-semibold text-ink">
+          <span>Subtotal</span><span>{{ formatPrice(subtotal()) }}</span>
+        </div>
+        <p class="text-xs leading-5 text-muted">Taxes and any delivery charges, if applicable, are not included.</p>
+        @if (hasUnavailableItems()) {
+          <p class="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900" role="status">Remove unavailable products before checkout.</p>
+        }
+        <a routerLink="/checkout" [class.pointer-events-none]="hasUnavailableItems()"
+           [class.opacity-50]="hasUnavailableItems()" [attr.aria-disabled]="hasUnavailableItems()"
+           class="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-dark">
+          Continue to checkout
+        </a>
+        <a routerLink="/products" class="mt-4 inline-flex w-full justify-center text-sm font-semibold text-accent hover:text-accent-dark">Continue shopping</a>
+      </aside>
+    </div>
+  }
+</section>

@@ -1,43 +1,52 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { RouterLink } from '@angular/router';
+import { catchError, map, of, switchMap } from 'rxjs';
+import { CartService } from '../../services/cart.service';
+import { hasRealmRole } from '../../security/admin-role';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, RouterLinkActive],
   templateUrl: './header.html',
   styleUrl: './header.css'
 })
-export class HeaderComponent implements OnInit {
-
+export class HeaderComponent {
   private readonly oidcSecurityService = inject(OidcSecurityService);
-
-  isAuthenticated = false;
-  username = '';
-
-  ngOnInit(): void {
-
-    this.oidcSecurityService.isAuthenticated$.subscribe(
-      ({ isAuthenticated }) => {
-        this.isAuthenticated = isAuthenticated;
-      }
-    );
-
-    this.oidcSecurityService.userData$.subscribe(
-      ({ userData }) => {
-        this.username = userData?.preferred_username ?? '';
-      }
-    );
-  }
+  readonly cartService = inject(CartService);
+  readonly menuOpen = signal(false);
+  readonly isAuthenticated = toSignal(
+    this.oidcSecurityService.isAuthenticated$.pipe(map(({ isAuthenticated }) => isAuthenticated)),
+    { initialValue: false }
+  );
+  readonly isAdmin = toSignal(
+    this.oidcSecurityService.isAuthenticated$.pipe(
+      switchMap(({ isAuthenticated }) => isAuthenticated
+        ? this.oidcSecurityService.getPayloadFromAccessToken().pipe(
+            map(payload => hasRealmRole(payload, 'ADMIN')),
+            catchError(() => of(false))
+          )
+        : of(false)
+      )
+    ),
+    { initialValue: false }
+  );
+  readonly username = toSignal(
+    this.oidcSecurityService.userData$.pipe(
+      map(({ userData }) => userData?.preferred_username ?? '')
+    ),
+    { initialValue: '' }
+  );
 
   login(): void {
     this.oidcSecurityService.authorize();
   }
 
   logout(): void {
-    this.oidcSecurityService
-      .logoff()
-      .subscribe(result => console.log(result));
+    this.oidcSecurityService.logoff().subscribe({
+      error: (error: unknown) => console.error('Unable to log out', error)
+    });
   }
 }

@@ -1,0 +1,8 @@
+@if (message()) {
+  <div class="fixed bottom-5 right-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-4 rounded-2xl border border-line bg-white px-4 py-3 shadow-[0_16px_40px_-20px_rgba(32,39,35,0.5)] sm:right-6"
+       role="status" aria-live="polite">
+    <p class="text-sm font-medium text-ink">{{ message() }}</p>
+    <a routerLink="/cart" class="shrink-0 text-sm font-semibold text-accent underline underline-offset-2">View cart</a>
+    <button type="button" (click)="dismiss.emit()" aria-label="Dismiss message" class="text-lg leading-none text-muted hover:text-ink">×</button>
+  </div>
+}

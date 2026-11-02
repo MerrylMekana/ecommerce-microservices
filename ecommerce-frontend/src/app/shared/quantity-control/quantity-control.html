@@ -1,0 +1,9 @@
+<div class="inline-flex h-11 items-center rounded-full border border-line bg-white" [attr.aria-label]="label()">
+  <button type="button" class="grid size-10 place-items-center rounded-l-full text-lg text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:text-muted/40"
+          [disabled]="value() <= 1" [attr.aria-label]="'Decrease ' + label().toLowerCase()" (click)="decrement()">−</button>
+  <input class="w-10 border-0 bg-transparent p-0 text-center text-sm font-semibold text-ink outline-none"
+         type="number" min="1" max="2147483647" step="1" [value]="value()" [attr.aria-label]="label()" (change)="updateFromInput($event)">
+  <button type="button" class="grid size-10 place-items-center rounded-r-full text-lg text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:text-muted/40"
+          [disabled]="value() >= 2147483647"
+          [attr.aria-label]="'Increase ' + label().toLowerCase()" (click)="increment()">+</button>
+</div>
