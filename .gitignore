@@ -27,10 +27,17 @@ inventory-service/docker/mysql/data/
 *.log
 
 # OS
-.DS_Storeproduct-service/data_backup/
+.DS_Store
 
 # macOS
 .DS_Store
 
 # Local database backups
 product-service/data_backup/
+
+# Keycloak local backups
+/api-gateway/keycloak-backup-before-export/
+/api-gateway/keycloak-mysql-before-admin-fix.sql
+
+# Local Tempo data
+/api-gateway/docker/tempo/tempo-data/

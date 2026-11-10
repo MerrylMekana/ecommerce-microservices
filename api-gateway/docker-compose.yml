@@ -16,13 +16,22 @@ services:
     image: quay.io/keycloak/keycloak:24.0.1
     command: ["start-dev", "--import-realm"]
     environment:
-      DB_VENDOR: MYSQL
-      DB_ADDR: keycloak-mysql
-      DB_DATABASE: keycloak
-      DB_USER: keycloak
-      DB_PASSWORD: ${MYSQL_PASSWORD}
+#      DB_VENDOR: MYSQL
+#      DB_ADDR: keycloak-mysql
+#      DB_DATABASE: keycloak
+#      DB_USER: keycloak
+#      DB_PASSWORD: ${MYSQL_PASSWORD}
+#      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+#      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+
+      KC_DB: mysql
+      KC_DB_URL_HOST: keycloak-mysql
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${MYSQL_PASSWORD}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      ORDER_INVENTORY_CLIENT_SECRET: ${ORDER_INVENTORY_CLIENT_SECRET}
     ports:
       - "8181:8080"
     volumes:
