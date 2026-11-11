@@ -20,6 +20,7 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final InventoryReservationService inventoryReservationService;
+    private final InventoryAdjustmentService inventoryAdjustmentService;
 
     public boolean isInStock(String skuCode, Integer quantity) {
         if (skuCode == null || skuCode.isBlank()) {
@@ -75,36 +76,12 @@ public class InventoryService {
         }
     }
 
-    @Transactional
-    public InventoryStockResponse addStock(String skuCode, Integer quantity) {
-        validateAdjustment(skuCode, quantity);
-        Inventory inventory = inventoryRepository.findBySkuCodeForUpdate(skuCode)
-                .orElseThrow(() -> new InventoryNotFoundException(skuCode));
-        long updatedQuantity = (long) inventory.getQuantity() + quantity;
-        if (updatedQuantity > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("resulting quantity exceeds the supported maximum");
-        }
-        inventory.setQuantity((int) updatedQuantity);
-        return response(inventoryRepository.save(inventory));
+    public InventoryStockResponse addStock(String operationKey, String skuCode, Integer quantity) {
+        return inventoryAdjustmentService.addStock(operationKey, skuCode, quantity);
     }
 
-    @Transactional
-    public InventoryStockResponse removeStock(String skuCode, Integer quantity) {
-        validateAdjustment(skuCode, quantity);
-        Inventory inventory = inventoryRepository.findBySkuCodeForUpdate(skuCode)
-                .orElseThrow(() -> new InventoryNotFoundException(skuCode));
-        if (inventory.getQuantity() < quantity) {
-            throw new InsufficientStockException(skuCode);
-        }
-        inventory.setQuantity(inventory.getQuantity() - quantity);
-        return response(inventoryRepository.save(inventory));
-    }
-
-    private void validateAdjustment(String skuCode, Integer quantity) {
-        validateSku(skuCode);
-        if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("quantity must be greater than zero");
-        }
+    public InventoryStockResponse removeStock(String operationKey, String skuCode, Integer quantity) {
+        return inventoryAdjustmentService.removeStock(operationKey, skuCode, quantity);
     }
 
     private void validateSku(String skuCode) {

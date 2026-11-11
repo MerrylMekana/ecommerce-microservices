@@ -47,11 +47,13 @@ public class InventoryClientStub {
 
     public static void verifyReservationCalls(int count, String skuCode) {
         verify(count, postRequestedFor(urlPathEqualTo("/api/inventory/reservations"))
+                .withHeader("Authorization", equalTo("Bearer order-service-token"))
                 .withRequestBody(matchingJsonPath("$.skuCode", equalTo(skuCode))));
     }
 
     public static void verifyBatchReservationCalls(int count, String firstSkuCode) {
         verify(count, postRequestedFor(urlPathEqualTo("/api/inventory/reservations"))
+                .withHeader("Authorization", equalTo("Bearer order-service-token"))
                 .withRequestBody(matchingJsonPath("$.items[0].skuCode", equalTo(firstSkuCode))));
     }
 

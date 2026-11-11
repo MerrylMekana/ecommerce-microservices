@@ -27,7 +27,7 @@ export const appConfig: ApplicationConfig = {
     provideAuth(
       {
         config: {
-          authority: 'http://localhost:8181/realms/sring-ms-security-realm',
+          authority: 'http://localhost:8181/realms/spring-ms-security-realm',
           redirectUrl: window.location.origin,
           postLogoutRedirectUri: window.location.origin,
           clientId: 'ecommerce-angular-client',

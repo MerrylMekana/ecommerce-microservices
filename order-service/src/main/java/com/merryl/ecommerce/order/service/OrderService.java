@@ -7,33 +7,42 @@ import com.merryl.ecommerce.order.client.InventoryReservationResponse;
 import com.merryl.ecommerce.order.client.InventoryUnavailableException;
 import com.merryl.ecommerce.order.dto.OrderRequest;
 import com.merryl.ecommerce.order.dto.OrderItemRequest;
-import com.merryl.ecommerce.order.event.OrderPlacedEvent;
+import com.merryl.ecommerce.order.event.OrderPlacedItemPayload;
+import com.merryl.ecommerce.order.event.OrderPlacedPayload;
+import com.merryl.ecommerce.order.metrics.OrderBusinessMetrics;
 import com.merryl.ecommerce.order.model.Order;
 import com.merryl.ecommerce.order.model.OrderItem;
 import com.merryl.ecommerce.order.model.OrderIdempotency;
 import com.merryl.ecommerce.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final InventoryClient inventoryClient;
-    private final KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
     private final OrderIdempotencyService idempotencyService;
     private final OrderPersistenceService orderPersistenceService;
+    private final OrderBusinessMetrics metrics;
 
     public void placeOrder(OrderRequest orderRequest, String idempotencyKey) {
+        try {
+            placeOrderInternal(orderRequest, idempotencyKey);
+        } catch (RuntimeException failure) {
+            metrics.orderFailed();
+            throw failure;
+        }
+    }
+
+    private void placeOrderInternal(OrderRequest orderRequest, String idempotencyKey) {
         List<OrderItemRequest> items = validate(orderRequest, idempotencyKey);
 
         OrderIdempotency idempotency = idempotencyService.claim(
@@ -41,6 +50,13 @@ public class OrderService {
 
         switch (idempotency.getStatus()) {
             case SUCCEEDED -> {
+                orderRepository.findByOrderNumber(idempotency.getOrderNumber())
+                        .ifPresent(order -> {
+                            if (orderPersistenceService.ensureExistingOrderCompleted(
+                                    order, toEventPayload(orderRequest, idempotency.getOrderNumber()))) {
+                                metrics.orderSucceeded();
+                            }
+                        });
                 return;
             }
             case INVENTORY_REJECTED -> throw new InsufficientInventoryException(
@@ -54,7 +70,11 @@ public class OrderService {
         }
 
         if (orderRepository.findByOrderNumber(idempotency.getOrderNumber()).isPresent()) {
-            publishIfNewlyCompleted(idempotency, orderRequest);
+            if (orderPersistenceService.ensureExistingOrderCompleted(
+                    toOrder(items, idempotency.getOrderNumber()),
+                    toEventPayload(orderRequest, idempotency.getOrderNumber()))) {
+                metrics.orderSucceeded();
+            }
             return;
         }
 
@@ -75,21 +95,22 @@ public class OrderService {
         }
 
         Order order = toOrder(items, idempotency.getOrderNumber());
-        boolean publishEvent;
+        OrderPlacedPayload eventPayload = toEventPayload(orderRequest, idempotency.getOrderNumber());
         try {
-            publishEvent = orderPersistenceService.saveAndComplete(order);
+            if (orderPersistenceService.saveAndComplete(order, eventPayload)) {
+                metrics.orderCreated();
+            }
+            metrics.orderSucceeded();
         } catch (DataAccessException persistenceFailure) {
             var persistedOrder = orderRepository.findByOrderNumber(idempotency.getOrderNumber());
             if (persistedOrder.isPresent()) {
-                publishEvent = idempotencyService.markSucceeded(idempotency.getOrderNumber());
+                if (orderPersistenceService.ensureExistingOrderCompleted(persistedOrder.get(), eventPayload)) {
+                    metrics.orderSucceeded();
+                }
             } else {
                 compensateReservation(idempotency, persistenceFailure);
                 return;
             }
-        }
-
-        if (publishEvent) {
-            publishOrderPlacedEvent(orderRequest, idempotency.getOrderNumber());
         }
     }
 
@@ -121,25 +142,18 @@ public class OrderService {
         }
     }
 
-    private void publishIfNewlyCompleted(OrderIdempotency idempotency, OrderRequest orderRequest) {
-        if (idempotencyService.markSucceeded(idempotency.getOrderNumber())) {
-            publishOrderPlacedEvent(orderRequest, idempotency.getOrderNumber());
-        }
-    }
-
-    private void publishOrderPlacedEvent(OrderRequest orderRequest, String orderNumber) {
+    private OrderPlacedPayload toEventPayload(OrderRequest orderRequest, String orderNumber) {
         OrderRequest.UserDetails userDetails = orderRequest.userDetails();
-        OrderPlacedEvent event = new OrderPlacedEvent();
-        event.setOrderNumber(orderNumber);
-        event.setEmail(userDetails.email());
-        event.setFirstName(userDetails.firstName());
-        event.setLastName(userDetails.lastName());
-        event.setItems(orderRequest.canonicalItems().stream()
-                .map(item -> new com.merryl.ecommerce.order.event.OrderItem(
-                        item.skuCode(), item.price().stripTrailingZeros().toPlainString(), item.quantity()))
-                .toList());
-        log.info("Sending OrderPlacedEvent to Kafka for order number: {}", orderNumber);
-        kafkaTemplate.send("order-placed", event);
+        return new OrderPlacedPayload(
+                UUID.randomUUID().toString(),
+                orderNumber,
+                userDetails.email(),
+                userDetails.firstName(),
+                userDetails.lastName(),
+                orderRequest.canonicalItems().stream()
+                        .map(item -> new OrderPlacedItemPayload(
+                                item.skuCode(), item.price().stripTrailingZeros().toPlainString(), item.quantity()))
+                        .toList());
     }
 
     private Order toOrder(List<OrderItemRequest> items, String orderNumber) {

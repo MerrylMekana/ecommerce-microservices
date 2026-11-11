@@ -43,6 +43,11 @@
         }
       },
       "default": []
+    },
+    {
+      "name": "eventId",
+      "type": "string",
+      "default": ""
     }
   ]
 }

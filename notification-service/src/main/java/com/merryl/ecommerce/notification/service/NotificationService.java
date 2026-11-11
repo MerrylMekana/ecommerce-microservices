@@ -23,7 +23,8 @@ public class NotificationService {
     @KafkaListener(topics = "order-placed")
     public  void listen(OrderPlacedEvent orderPlacedEvent) {
 
-        log.info("Received order placed event {} from topic", orderPlacedEvent);
+        log.info("Received order placed event {} for order {} from topic",
+                orderPlacedEvent.getEventId(), orderPlacedEvent.getOrderNumber());
         String items = orderPlacedEvent.getItems().stream()
                 .map(item -> "%s x%d @ %s".formatted(
                         item.getSkuCode(), item.getQuantity(), item.getUnitPrice()))

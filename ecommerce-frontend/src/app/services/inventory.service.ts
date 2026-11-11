@@ -17,17 +17,19 @@ export class InventoryService {
     return this.httpClient.post<InventoryStock>(this.baseUrl, { skuCode, quantity });
   }
 
-  addStock(skuCode: string, quantity: number): Observable<InventoryStock> {
+  addStock(skuCode: string, quantity: number, operationKey: string): Observable<InventoryStock> {
     return this.httpClient.post<InventoryStock>(
       `${this.baseUrl}/${encodeURIComponent(skuCode)}/add`,
-      { quantity }
+      { quantity },
+      { headers: { 'Idempotency-Key': operationKey } }
     );
   }
 
-  removeStock(skuCode: string, quantity: number): Observable<InventoryStock> {
+  removeStock(skuCode: string, quantity: number, operationKey: string): Observable<InventoryStock> {
     return this.httpClient.post<InventoryStock>(
       `${this.baseUrl}/${encodeURIComponent(skuCode)}/remove`,
-      { quantity }
+      { quantity },
+      { headers: { 'Idempotency-Key': operationKey } }
     );
   }
 }

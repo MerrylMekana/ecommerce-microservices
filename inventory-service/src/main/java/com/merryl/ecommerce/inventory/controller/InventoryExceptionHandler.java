@@ -3,6 +3,7 @@ package com.merryl.ecommerce.inventory.controller;
 import com.merryl.ecommerce.inventory.service.ReservationConflictException;
 import com.merryl.ecommerce.inventory.service.ReservationNotFoundException;
 import com.merryl.ecommerce.inventory.service.InventoryConflictException;
+import com.merryl.ecommerce.inventory.service.InventoryAdjustmentConflictException;
 import com.merryl.ecommerce.inventory.service.InventoryNotFoundException;
 import com.merryl.ecommerce.inventory.service.InsufficientStockException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,11 @@ public class InventoryExceptionHandler {
 
     @ExceptionHandler(InventoryConflictException.class)
     ProblemDetail handleInventoryConflict(InventoryConflictException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(InventoryAdjustmentConflictException.class)
+    ProblemDetail handleAdjustmentConflict(InventoryAdjustmentConflictException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     }
 

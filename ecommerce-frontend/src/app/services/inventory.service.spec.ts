@@ -29,14 +29,16 @@ describe('InventoryService', () => {
     expect(initialize.request.body).toEqual({ skuCode: 'SKU-1', quantity: 0 });
     initialize.flush({ skuCode: 'SKU-1', quantity: 0 });
 
-    service.addStock('SKU 2', 3).subscribe();
+    service.addStock('SKU 2', 3, 'operation-add').subscribe();
     const add = http.expectOne('http://localhost:9000/api/inventory/stock/SKU%202/add');
     expect(add.request.body).toEqual({ quantity: 3 });
+    expect(add.request.headers.get('Idempotency-Key')).toBe('operation-add');
     add.flush({ skuCode: 'SKU 2', quantity: 3 });
 
-    service.removeStock('SKU-1', 1).subscribe();
+    service.removeStock('SKU-1', 1, 'operation-remove').subscribe();
     const remove = http.expectOne('http://localhost:9000/api/inventory/stock/SKU-1/remove');
     expect(remove.request.body).toEqual({ quantity: 1 });
+    expect(remove.request.headers.get('Idempotency-Key')).toBe('operation-remove');
     remove.flush({ skuCode: 'SKU-1', quantity: 2 });
 
   });

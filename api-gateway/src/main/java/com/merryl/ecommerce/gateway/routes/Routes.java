@@ -5,6 +5,7 @@ import org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctio
 import org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.function.RequestPredicate;
 import org.springframework.web.servlet.function.RequestPredicates;
@@ -21,11 +22,20 @@ import static org.springframework.cloud.gateway.server.mvc.handler.GatewayRouter
 //define all the routing rules to access the service. ie. rules to access product service, etc
 public class Routes {
 
+    @Value("${product.service.url:http://localhost:8080}")
+    private String productServiceUrl;
+
+    @Value("${order.service.url:http://localhost:8081}")
+    private String orderServiceUrl;
+
+    @Value("${inventory.service.url:http://localhost:8082}")
+    private String inventoryServiceUrl;
+
     @Bean
     public RouterFunction<ServerResponse> productServiceRoute() {
         return route("product_service")
                 .route(RequestPredicates.path("/api/product"), HandlerFunctions.http())
-                .before(uri("http://localhost:8080"))
+                .before(uri(productServiceUrl))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("productServiceCircuitBreaker",
                         URI.create("forward:/fallbackRoute")))
                 .build();
@@ -35,7 +45,7 @@ public class Routes {
     public RouterFunction<ServerResponse> orderServiceRoute() {
         return route("order_service")
                 .route(RequestPredicates.path("/api/order"), HandlerFunctions.http())
-                .before(uri("http://localhost:8081"))
+                .before(uri(orderServiceUrl))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("orderServiceCircuitBreaker",
                     URI.create("forward:/fallbackRoute")))
                 .build();
@@ -46,7 +56,7 @@ public class Routes {
         return route("inventory_service")
                 .route(RequestPredicates.path("/api/inventory")
                         .or(RequestPredicates.path("/api/inventory/**")), HandlerFunctions.http())
-                .before(uri("http://localhost:8082"))
+                .before(uri(inventoryServiceUrl))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("inventoryServiceCircuitBreaker",
                         URI.create("forward:/fallbackRoute")))
                 .build();
@@ -58,7 +68,7 @@ public class Routes {
     public RouterFunction<ServerResponse> productServiceSwaggerRoute() {
         return route("product_service_swagger")
                 .route(RequestPredicates.path("/aggregate/product-service/v3/api-docs"), HandlerFunctions.http())
-                .before(uri("http://localhost:8080"))
+                .before(uri(productServiceUrl))
                 .before(setPath("/api-docs"))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("productServiceSwaggerCircuitBreaker",
                         URI.create("forward:/fallbackRoute")))
@@ -69,7 +79,7 @@ public class Routes {
     public RouterFunction<ServerResponse> orderServiceSwaggerRoute() {
         return route("order_service_swagger")
                 .route(RequestPredicates.path("/aggregate/order-service/v3/api-docs"), HandlerFunctions.http())
-                .before(uri("http://localhost:8081"))
+                .before(uri(orderServiceUrl))
                 .before(setPath("/v3//api-docs"))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("orderServiceSwaggerCircuitBreaker",
                         URI.create("forward:/fallbackRoute")))
@@ -80,7 +90,7 @@ public class Routes {
     public RouterFunction<ServerResponse> inventoryServiceSwaggerRoute() {
         return route("inventory_service_swagger")
                 .route(RequestPredicates.path("/aggregate/inventory-service/v3/api-docs"), HandlerFunctions.http())
-                .before(uri("http://localhost:8082"))
+                .before(uri(inventoryServiceUrl))
                 .before(setPath("/api-docs"))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker("inventoryServiceSwaggerCircuitBreaker",
                         URI.create("forward:/fallbackRoute")))

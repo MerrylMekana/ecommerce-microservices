@@ -1,6 +1,7 @@
 package com.merryl.ecommerce.order.service;
 
 import com.merryl.ecommerce.order.model.OrderIdempotency;
+import com.merryl.ecommerce.order.metrics.OrderBusinessMetrics;
 import com.merryl.ecommerce.order.repository.OrderIdempotencyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -13,6 +14,7 @@ import java.util.UUID;
 public class OrderIdempotencyService {
 
     private final OrderIdempotencyRepository repository;
+    private final OrderBusinessMetrics metrics;
 
     public OrderIdempotency claim(String key, String requestHash) {
         var existing = repository.findByIdempotencyKey(key);
@@ -69,6 +71,7 @@ public class OrderIdempotencyService {
             throw new IdempotencyConflictException(
                     "Idempotency-Key was already used with a different request");
         }
+        metrics.idempotencyReplay();
         return existing;
     }
 }

@@ -32,6 +32,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(freeResourceURLs)
                         .permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/product").hasRole("ADMIN")
                         .requestMatchers("/api/inventory/stock", "/api/inventory/stock/**").hasRole("ADMIN")
                         .anyRequest()

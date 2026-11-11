@@ -16,6 +16,8 @@ public interface OrderIdempotencyRepository extends JpaRepository<OrderIdempoten
 
     Optional<OrderIdempotency> findByOrderNumber(String orderNumber);
 
+    long countByStatus(OrderIdempotencyStatus status);
+
     @Modifying
     @Transactional
     @Query("""

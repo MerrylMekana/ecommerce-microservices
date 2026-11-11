@@ -49,5 +49,6 @@ class OrderEventSchemaCompatibilityTests {
         assertEquals("legacy-order", decoded.getOrderNumber().toString());
         assertEquals("buyer@example.com", decoded.getEmail().toString());
         assertEquals(0, decoded.getItems().size());
+        assertEquals("", decoded.getEventId().toString());
     }
 }

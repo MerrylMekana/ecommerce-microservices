@@ -5,6 +5,7 @@ import com.merryl.ecommerce.inventory.dto.InventoryReservationResponse;
 import com.merryl.ecommerce.inventory.model.InventoryReservation;
 import com.merryl.ecommerce.inventory.dto.InventoryReservationItemRequest;
 import com.merryl.ecommerce.inventory.repository.InventoryReservationRepository;
+import com.merryl.ecommerce.inventory.metrics.InventoryBusinessMetrics;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -24,21 +25,40 @@ public class InventoryReservationService {
 
     private final InventoryReservationTransaction reservationTransaction;
     private final InventoryReservationRepository reservationRepository;
+    private final InventoryBusinessMetrics metrics;
 
     public InventoryReservationResponse reserve(InventoryReservationRequest request) {
         List<InventoryReservationItemRequest> items = validateAndCanonicalize(request);
         String requestHash = hash(canonicalRequest(items));
+        boolean replay = reservationRepository.findByReservationId(request.reservationId()).isPresent();
 
+        InventoryReservationResponse response;
         try {
-            return reservationTransaction.reserve(request.reservationId(), items, requestHash);
+            response = reservationTransaction.reserve(request.reservationId(), items, requestHash);
         } catch (DataIntegrityViolationException collision) {
             InventoryReservation existing = reservationRepository.findByReservationId(request.reservationId())
                     .orElseThrow(() -> collision);
             if (!existing.getRequestHash().equals(requestHash)) {
                 throw new ReservationConflictException(request.reservationId());
             }
-            return existingResponse(existing);
+            replay = true;
+            response = existingResponse(existing);
+        } catch (RuntimeException failure) {
+            metrics.reservationFailed();
+            throw failure;
         }
+
+        if ("RESERVED".equals(response.status())) {
+            if (!replay) {
+                metrics.reservationSucceeded();
+            }
+        } else {
+            metrics.reservationFailed();
+            if ("INSUFFICIENT_INVENTORY".equals(response.code())) {
+                metrics.insufficientStock();
+            }
+        }
+        return response;
     }
 
     public InventoryReservationResponse release(String reservationId) {

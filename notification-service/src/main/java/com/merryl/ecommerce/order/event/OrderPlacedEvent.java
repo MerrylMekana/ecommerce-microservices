@@ -14,10 +14,10 @@ import org.apache.avro.message.SchemaStore;
 
 @org.apache.avro.specific.AvroGenerated
 public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
-  private static final long serialVersionUID = 5315950614575730479L;
+  private static final long serialVersionUID = -2472393978914951231L;
 
 
-  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"OrderPlacedEvent\",\"namespace\":\"com.merryl.ecommerce.order.event\",\"fields\":[{\"name\":\"orderNumber\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"firstName\",\"type\":\"string\"},{\"name\":\"lastName\",\"type\":\"string\"},{\"name\":\"items\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"OrderItem\",\"fields\":[{\"name\":\"skuCode\",\"type\":\"string\"},{\"name\":\"unitPrice\",\"type\":\"string\"},{\"name\":\"quantity\",\"type\":\"int\"}]}},\"default\":[]}]}");
+  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"OrderPlacedEvent\",\"namespace\":\"com.merryl.ecommerce.order.event\",\"fields\":[{\"name\":\"orderNumber\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"firstName\",\"type\":\"string\"},{\"name\":\"lastName\",\"type\":\"string\"},{\"name\":\"items\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"OrderItem\",\"fields\":[{\"name\":\"skuCode\",\"type\":\"string\"},{\"name\":\"unitPrice\",\"type\":\"string\"},{\"name\":\"quantity\",\"type\":\"int\"}]}},\"default\":[]},{\"name\":\"eventId\",\"type\":\"string\",\"default\":\"\"}]}");
   public static org.apache.avro.Schema getClassSchema() { return SCHEMA$; }
 
   private static final SpecificData MODEL$ = new SpecificData();
@@ -78,6 +78,7 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
   private java.lang.CharSequence firstName;
   private java.lang.CharSequence lastName;
   private java.util.List<com.merryl.ecommerce.order.event.OrderItem> items;
+  private java.lang.CharSequence eventId;
 
   /**
    * Default constructor.  Note that this does not initialize fields
@@ -93,13 +94,15 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
    * @param firstName The new value for firstName
    * @param lastName The new value for lastName
    * @param items The new value for items
+   * @param eventId The new value for eventId
    */
-  public OrderPlacedEvent(java.lang.CharSequence orderNumber, java.lang.CharSequence email, java.lang.CharSequence firstName, java.lang.CharSequence lastName, java.util.List<com.merryl.ecommerce.order.event.OrderItem> items) {
+  public OrderPlacedEvent(java.lang.CharSequence orderNumber, java.lang.CharSequence email, java.lang.CharSequence firstName, java.lang.CharSequence lastName, java.util.List<com.merryl.ecommerce.order.event.OrderItem> items, java.lang.CharSequence eventId) {
     this.orderNumber = orderNumber;
     this.email = email;
     this.firstName = firstName;
     this.lastName = lastName;
     this.items = items;
+    this.eventId = eventId;
   }
 
   @Override
@@ -117,6 +120,7 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
     case 2: return firstName;
     case 3: return lastName;
     case 4: return items;
+    case 5: return eventId;
     default: throw new IndexOutOfBoundsException("Invalid index: " + field$);
     }
   }
@@ -131,6 +135,7 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
     case 2: firstName = (java.lang.CharSequence)value$; break;
     case 3: lastName = (java.lang.CharSequence)value$; break;
     case 4: items = (java.util.List<com.merryl.ecommerce.order.event.OrderItem>)value$; break;
+    case 5: eventId = (java.lang.CharSequence)value$; break;
     default: throw new IndexOutOfBoundsException("Invalid index: " + field$);
     }
   }
@@ -221,6 +226,23 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
   }
 
   /**
+   * Gets the value of the 'eventId' field.
+   * @return The value of the 'eventId' field.
+   */
+  public java.lang.CharSequence getEventId() {
+    return eventId;
+  }
+
+
+  /**
+   * Sets the value of the 'eventId' field.
+   * @param value the value to set.
+   */
+  public void setEventId(java.lang.CharSequence value) {
+    this.eventId = value;
+  }
+
+  /**
    * Creates a new OrderPlacedEvent RecordBuilder.
    * @return A new OrderPlacedEvent RecordBuilder
    */
@@ -266,6 +288,7 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
     private java.lang.CharSequence firstName;
     private java.lang.CharSequence lastName;
     private java.util.List<com.merryl.ecommerce.order.event.OrderItem> items;
+    private java.lang.CharSequence eventId;
 
     /** Creates a new Builder */
     private Builder() {
@@ -298,6 +321,10 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
         this.items = data().deepCopy(fields()[4].schema(), other.items);
         fieldSetFlags()[4] = other.fieldSetFlags()[4];
       }
+      if (isValidValue(fields()[5], other.eventId)) {
+        this.eventId = data().deepCopy(fields()[5].schema(), other.eventId);
+        fieldSetFlags()[5] = other.fieldSetFlags()[5];
+      }
     }
 
     /**
@@ -325,6 +352,10 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
       if (isValidValue(fields()[4], other.items)) {
         this.items = data().deepCopy(fields()[4].schema(), other.items);
         fieldSetFlags()[4] = true;
+      }
+      if (isValidValue(fields()[5], other.eventId)) {
+        this.eventId = data().deepCopy(fields()[5].schema(), other.eventId);
+        fieldSetFlags()[5] = true;
       }
     }
 
@@ -528,6 +559,46 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
       return this;
     }
 
+    /**
+      * Gets the value of the 'eventId' field.
+      * @return The value.
+      */
+    public java.lang.CharSequence getEventId() {
+      return eventId;
+    }
+
+
+    /**
+      * Sets the value of the 'eventId' field.
+      * @param value The value of 'eventId'.
+      * @return This builder.
+      */
+    public com.merryl.ecommerce.order.event.OrderPlacedEvent.Builder setEventId(java.lang.CharSequence value) {
+      validate(fields()[5], value);
+      this.eventId = value;
+      fieldSetFlags()[5] = true;
+      return this;
+    }
+
+    /**
+      * Checks whether the 'eventId' field has been set.
+      * @return True if the 'eventId' field has been set, false otherwise.
+      */
+    public boolean hasEventId() {
+      return fieldSetFlags()[5];
+    }
+
+
+    /**
+      * Clears the value of the 'eventId' field.
+      * @return This builder.
+      */
+    public com.merryl.ecommerce.order.event.OrderPlacedEvent.Builder clearEventId() {
+      eventId = null;
+      fieldSetFlags()[5] = false;
+      return this;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public OrderPlacedEvent build() {
@@ -538,6 +609,7 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
         record.firstName = fieldSetFlags()[2] ? this.firstName : (java.lang.CharSequence) defaultValue(fields()[2]);
         record.lastName = fieldSetFlags()[3] ? this.lastName : (java.lang.CharSequence) defaultValue(fields()[3]);
         record.items = fieldSetFlags()[4] ? this.items : (java.util.List<com.merryl.ecommerce.order.event.OrderItem>) defaultValue(fields()[4]);
+        record.eventId = fieldSetFlags()[5] ? this.eventId : (java.lang.CharSequence) defaultValue(fields()[5]);
         return record;
       } catch (org.apache.avro.AvroMissingFieldException e) {
         throw e;
@@ -591,6 +663,8 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
     if (actualSize0 != size0)
       throw new java.util.ConcurrentModificationException("Array-size written was " + size0 + ", but element count was " + actualSize0 + ".");
 
+    out.writeString(this.eventId);
+
   }
 
   @Override public void customDecode(org.apache.avro.io.ResolvingDecoder in)
@@ -624,8 +698,10 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
         }
       }
 
+      this.eventId = in.readString(this.eventId instanceof Utf8 ? (Utf8)this.eventId : null);
+
     } else {
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 6; i++) {
         switch (fieldOrder[i].pos()) {
         case 0:
           this.orderNumber = in.readString(this.orderNumber instanceof Utf8 ? (Utf8)this.orderNumber : null);
@@ -661,6 +737,10 @@ public class OrderPlacedEvent extends org.apache.avro.specific.SpecificRecordBas
               a0.add(e0);
             }
           }
+          break;
+
+        case 5:
+          this.eventId = in.readString(this.eventId instanceof Utf8 ? (Utf8)this.eventId : null);
           break;
 
         default:

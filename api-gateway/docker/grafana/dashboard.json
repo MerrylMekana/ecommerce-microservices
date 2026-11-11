@@ -1,0 +1,169 @@
+{
+  "id": null,
+  "uid": "ecommerce-observability",
+  "title": "E-commerce Service Health",
+  "description": "Compact service, business-flow, and reliability signals for the local demo stack.",
+  "tags": ["ecommerce", "spring-boot", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "application",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(up{job=~\"api-gateway|product-service|order-service|inventory-service|notification-service\"}, application)",
+        "refresh": 1,
+        "sort": 1,
+        "current": {
+          "selected": false,
+          "text": "order-service",
+          "value": "order-service"
+        },
+        "options": []
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service availability",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "up{application=\"$application\"}", "legendFormat": "{{job}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}, "orientation": "auto", "colorMode": "value", "graphMode": "none"}
+    },
+    {
+      "id": 2,
+      "title": "HTTP request rate",
+      "type": "timeseries",
+      "gridPos": {"x": 6, "y": 0, "w": 9, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (job) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "{{job}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 3,
+      "title": "HTTP 5xx rate",
+      "type": "stat",
+      "gridPos": {"x": 15, "y": 0, "w": 9, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 0.001)", "legendFormat": "5xx ratio"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.01}, {"color": "red", "value": 0.05}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}, "colorMode": "value", "graphMode": "area"}
+    },
+    {
+      "id": 4,
+      "title": "HTTP p95 latency",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "{{job}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 5,
+      "title": "Order outcomes",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "rate(orders_created_count_total{application=\"order-service\"}[5m])", "legendFormat": "created"},
+        {"refId": "B", "expr": "rate(orders_succeeded_total{application=\"order-service\"}[5m])", "legendFormat": "succeeded"},
+        {"refId": "C", "expr": "rate(orders_failed_total{application=\"order-service\"}[5m])", "legendFormat": "failed"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 6,
+      "title": "Order idempotency replays",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 10, "w": 8, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "rate(orders_idempotency_replays_total{application=\"order-service\"}[5m])", "legendFormat": "replays/sec"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "id": 7,
+      "title": "Inventory reservations",
+      "type": "timeseries",
+      "gridPos": {"x": 8, "y": 10, "w": 16, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "rate(inventory_reservations_total{application=\"inventory-service\"}[5m])", "legendFormat": "reserved/sec"},
+        {"refId": "B", "expr": "rate(inventory_reservation_failures_total{application=\"inventory-service\"}[5m])", "legendFormat": "failures/sec"},
+        {"refId": "C", "expr": "rate(inventory_insufficient_stock_total{application=\"inventory-service\"}[5m])", "legendFormat": "insufficient stock/sec"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 8,
+      "title": "Outbox pending",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "order_outbox_pending{application=\"order-service\"}", "legendFormat": "events"}],
+      "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 10}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}, "colorMode": "value", "graphMode": "area"}
+    },
+    {
+      "id": 9,
+      "title": "Outbox failures, retries, compensation",
+      "type": "timeseries",
+      "gridPos": {"x": 6, "y": 16, "w": 12, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "rate(order_outbox_publish_failure_total{application=\"order-service\"}[5m])", "legendFormat": "publish failures/sec"},
+        {"refId": "B", "expr": "rate(order_outbox_retries_total{application=\"order-service\"}[5m])", "legendFormat": "retries/sec"},
+        {"refId": "C", "expr": "inventory_compensation_pending{application=\"order-service\"}", "legendFormat": "compensations pending"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 10,
+      "title": "JVM heap and process CPU",
+      "type": "timeseries",
+      "gridPos": {"x": 18, "y": 16, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum(jvm_memory_used_bytes{application=\"$application\",area=\"heap\"}) / clamp_min(sum(jvm_memory_max_bytes{application=\"$application\",area=\"heap\"}), 1)", "legendFormat": "heap used"},
+        {"refId": "B", "expr": "process_cpu_usage{application=\"$application\"}", "legendFormat": "process CPU"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    }
+  ]
+}

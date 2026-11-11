@@ -34,7 +34,8 @@ import static org.mockito.Mockito.verify;
 		"spring.kafka.consumer.properties.schema.registry.url=mock://notification-service",
 		"spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
 		"spring.kafka.producer.value-serializer=io.confluent.kafka.serializers.KafkaAvroSerializer",
-		"spring.kafka.producer.properties.schema.registry.url=mock://notification-service"
+		"spring.kafka.producer.properties.schema.registry.url=mock://notification-service",
+		"management.health.mail.enabled=false"
 })
 class NotificationServiceIntegrationTests {
 
@@ -47,7 +48,7 @@ class NotificationServiceIntegrationTests {
 	@Test
 	void shouldSendOrderConfirmationWhenOrderPlacedEventIsConsumed() throws Exception {
 		OrderPlacedEvent event = new OrderPlacedEvent(
-				"order-123", "buyer@example.com", "Taylor", "Customer", List.of());
+				"order-123", "buyer@example.com", "Taylor", "Customer", List.of(), "event-123");
 		kafkaTemplate.send("order-placed", "order-123", event).get(10, TimeUnit.SECONDS);
 
 		ArgumentCaptor<MimeMessagePreparator> preparatorCaptor =
@@ -67,7 +68,7 @@ class NotificationServiceIntegrationTests {
 		OrderPlacedEvent event = new OrderPlacedEvent(
 				"order-multi", "buyer@example.com", "Taylor", "Customer",
 				List.of(new OrderItem("IPHONE-15", "799.00", 2),
-						new OrderItem("AIRPODS-PRO", "249.00", 1)));
+						new OrderItem("AIRPODS-PRO", "249.00", 1)), "event-multi");
 		kafkaTemplate.send("order-placed", "order-multi", event).get(10, TimeUnit.SECONDS);
 
 		ArgumentCaptor<MimeMessagePreparator> preparatorCaptor =

@@ -22,8 +22,10 @@ describe('InventoryPageComponent', () => {
   };
 
   beforeEach(async () => {
-    addStock = vi.fn((_sku: string, quantity: number) => of({ skuCode: 'SKU-1', quantity: 5 + quantity }));
-    removeStock = vi.fn((_sku: string, quantity: number) => of({ skuCode: 'SKU-1', quantity: 5 - quantity }));
+    addStock = vi.fn((_sku: string, quantity: number, _key: string) =>
+      of({ skuCode: 'SKU-1', quantity: 5 + quantity }));
+    removeStock = vi.fn((_sku: string, quantity: number, _key: string) =>
+      of({ skuCode: 'SKU-1', quantity: 5 - quantity }));
     initializeStock = vi.fn((_sku: string, quantity: number) => of({ skuCode: 'SKU-1', quantity }));
     await TestBed.configureTestingModule({
       imports: [InventoryPageComponent],
@@ -51,12 +53,12 @@ describe('InventoryPageComponent', () => {
     component.setQuantity('SKU-1', inputEvent('2'));
 
     component.add(row);
-    expect(addStock).toHaveBeenCalledWith('SKU-1', 2);
+    expect(addStock).toHaveBeenCalledWith('SKU-1', 2, expect.any(String));
     expect(component.rows()[0].stock?.quantity).toBe(7);
 
     component.setQuantity('SKU-1', inputEvent('3'));
     component.remove(component.rows()[0]);
-    expect(removeStock).toHaveBeenCalledWith('SKU-1', 3);
+    expect(removeStock).toHaveBeenCalledWith('SKU-1', 3, expect.any(String));
     expect(component.rows()[0].stock?.quantity).toBe(2);
   });
 
@@ -82,6 +84,18 @@ describe('InventoryPageComponent', () => {
 
     expect(initializeStock).toHaveBeenCalledWith('SKU-1', 0);
     expect(component.rows()[0].stock?.quantity).toBe(0);
+  });
+
+  it('reuses the same operation key after an ambiguous network failure', () => {
+    addStock.mockImplementationOnce(() => throwError(() => ({ status: 0 })));
+    component.setQuantity('SKU-1', inputEvent('2'));
+    component.add(component.rows()[0]);
+    const firstKey = addStock.mock.calls[0][2];
+
+    component.add(component.rows()[0]);
+
+    expect(addStock).toHaveBeenCalledTimes(2);
+    expect(addStock.mock.calls[1][2]).toBe(firstKey);
   });
 
   function inputEvent(value: string): Event {

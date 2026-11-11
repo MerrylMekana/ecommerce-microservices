@@ -2,7 +2,7 @@ import { PassedInitialConfig } from 'angular-auth-oidc-client';
 
 export const authConfig: PassedInitialConfig = {
   config: {
-    authority: 'http://localhost:8181/realms/sring-ms-security-realm',
+    authority: 'http://localhost:8181/realms/spring-ms-security-realm',
     redirectUrl: window.location.origin,
     postLogoutRedirectUri: window.location.origin,
     clientId: 'ecommerce-angular-client',

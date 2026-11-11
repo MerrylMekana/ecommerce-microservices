@@ -1,0 +1,76 @@
+groups:
+  - name: ecommerce-demo
+    rules:
+      - alert: ElevatedHttp5xxRate
+        expr: |
+          (
+            sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            /
+            sum by (application) (rate(http_server_requests_seconds_count[5m]))
+          ) > 0.05
+          and
+          sum by (application) (rate(http_server_requests_seconds_count[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP 5xx rate is above 5% for {{ $labels.application }}
+          description: Demo threshold; tune using service SLOs and traffic baselines before production.
+
+      - alert: HighHttpRequestLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (application, le) (rate(http_server_requests_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP p95 latency is above 1 second for {{ $labels.application }}
+          description: Demo threshold; tune using service SLOs and traffic baselines before production.
+
+      - alert: OrderOutboxBacklog
+        expr: order_outbox_pending > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than 10 order outbox events are pending
+          description: Demo threshold intended to reveal a stopped or slow dispatcher.
+
+      - alert: OrderOutboxPublishFailures
+        expr: increase(order_outbox_publish_failure_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Order outbox publication failures occurred in the last 5 minutes
+          description: Inspect Order Service logs and Kafka connectivity; this is a demo alert.
+
+      - alert: InventoryCompensationPending
+        expr: inventory_compensation_pending > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Inventory compensation is still pending
+          description: Demo alert for order reservations awaiting inventory release.
+
+      - alert: InventoryReservationFailuresIncreasing
+        expr: increase(inventory_reservation_failures_total[5m]) >= 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: At least 3 inventory reservation failures occurred in 5 minutes
+          description: Includes rejected reservation outcomes; tune for expected demo traffic.
+
+      - alert: ApplicationServiceDown
+        expr: up{job=~"api-gateway|product-service|order-service|inventory-service|notification-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Prometheus cannot scrape {{ $labels.job }}
+          description: A scrape failure does not distinguish an app failure from a network/configuration issue.

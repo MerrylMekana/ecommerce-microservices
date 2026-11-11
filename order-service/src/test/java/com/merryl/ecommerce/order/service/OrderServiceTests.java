@@ -6,14 +6,14 @@ import com.merryl.ecommerce.order.client.InventoryReservationResponse;
 import com.merryl.ecommerce.order.client.InventoryUnavailableException;
 import com.merryl.ecommerce.order.dto.OrderItemRequest;
 import com.merryl.ecommerce.order.dto.OrderRequest;
-import com.merryl.ecommerce.order.event.OrderPlacedEvent;
+import com.merryl.ecommerce.order.event.OrderPlacedPayload;
+import com.merryl.ecommerce.order.metrics.OrderBusinessMetrics;
 import com.merryl.ecommerce.order.model.Order;
 import com.merryl.ecommerce.order.model.OrderIdempotency;
 import com.merryl.ecommerce.order.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Optional;
@@ -38,20 +38,21 @@ class OrderServiceTests {
 
     private OrderRepository orderRepository;
     private InventoryClient inventoryClient;
-    private KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
     private OrderIdempotencyService idempotencyService;
     private OrderPersistenceService orderPersistenceService;
+    private OrderBusinessMetrics metrics;
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
         inventoryClient = mock(InventoryClient.class);
-        kafkaTemplate = mock(KafkaTemplate.class);
         idempotencyService = mock(OrderIdempotencyService.class);
         orderPersistenceService = mock(OrderPersistenceService.class);
-        orderService = new OrderService(orderRepository, inventoryClient, kafkaTemplate,
-                idempotencyService, orderPersistenceService);
+        metrics = mock(OrderBusinessMetrics.class);
+        orderService = new OrderService(
+                orderRepository, inventoryClient, idempotencyService, orderPersistenceService, metrics);
+        when(orderPersistenceService.saveAndComplete(any(), any())).thenReturn(true);
     }
 
     @Test
@@ -65,7 +66,7 @@ class OrderServiceTests {
                 .thenReturn(new InventoryReservationResponse("order-123", "RESERVED", "RESERVED", "Reserved"));
         when(inventoryClient.release("order-123"))
                 .thenReturn(new InventoryReservationResponse("order-123", "RELEASED", "RELEASED", "Released"));
-        when(orderPersistenceService.saveAndComplete(any()))
+        when(orderPersistenceService.saveAndComplete(any(), any()))
                 .thenThrow(new DataAccessResourceFailureException("database unavailable"));
         when(idempotencyService.markCompensationPending(eq("order-123"), anyString())).thenReturn(true);
 
@@ -75,7 +76,6 @@ class OrderServiceTests {
         verify(inventoryClient).release("order-123");
         verify(idempotencyService).markCompensationPending(eq("order-123"), anyString());
         verify(idempotencyService).markCompensated(eq("order-123"), anyString());
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -95,7 +95,6 @@ class OrderServiceTests {
         verify(idempotencyService).markInventoryRejected(
                 "order-456", "INSUFFICIENT_INVENTORY", "Insufficient stock");
         verifyNoInteractions(orderPersistenceService);
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -107,7 +106,7 @@ class OrderServiceTests {
         when(orderRepository.findByOrderNumber("order-789")).thenReturn(Optional.empty());
         when(inventoryClient.reserve(any(InventoryReservationRequest.class)))
                 .thenReturn(new InventoryReservationResponse("order-789", "RESERVED", "RESERVED", "Reserved"));
-        when(orderPersistenceService.saveAndComplete(any()))
+        when(orderPersistenceService.saveAndComplete(any(), any()))
                 .thenThrow(new DataAccessResourceFailureException("database unavailable"));
         when(idempotencyService.markCompensationPending(eq("order-789"), anyString())).thenReturn(true);
         when(inventoryClient.release("order-789"))
@@ -118,7 +117,6 @@ class OrderServiceTests {
 
         verify(idempotencyService).markCompensationPending(eq("order-789"), anyString());
         verify(idempotencyService, never()).markCompensated(anyString(), anyString());
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -128,7 +126,7 @@ class OrderServiceTests {
         when(orderRepository.findByOrderNumber("order-race")).thenReturn(Optional.empty());
         when(inventoryClient.reserve(any(InventoryReservationRequest.class)))
                 .thenReturn(new InventoryReservationResponse("order-race", "RESERVED", "RESERVED", "Reserved"));
-        when(orderPersistenceService.saveAndComplete(any()))
+        when(orderPersistenceService.saveAndComplete(any(), any()))
                 .thenThrow(new DataAccessResourceFailureException("database unavailable"));
         when(idempotencyService.markCompensationPending(eq("order-race"), anyString())).thenReturn(false);
 
@@ -137,7 +135,6 @@ class OrderServiceTests {
 
         verify(inventoryClient, never()).release(anyString());
         verify(idempotencyService, never()).markCompensated(anyString(), anyString());
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -151,7 +148,6 @@ class OrderServiceTests {
 
         verifyNoInteractions(inventoryClient);
         verifyNoInteractions(orderPersistenceService);
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -169,7 +165,7 @@ class OrderServiceTests {
         AtomicReference<Order> persistedOrder = new AtomicReference<>();
         CountDownLatch successfulPersistenceCommitted = new CountDownLatch(1);
         AtomicInteger persistenceAttempt = new AtomicInteger();
-        when(orderPersistenceService.saveAndComplete(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             int attempt = persistenceAttempt.getAndIncrement();
             if (attempt == 0) {
                 Order order = invocation.getArgument(0);
@@ -182,7 +178,7 @@ class OrderServiceTests {
 
             assertTrue(successfulPersistenceCommitted.await(5, TimeUnit.SECONDS));
             throw new DataAccessResourceFailureException("competing persistence failed");
-        });
+        }).when(orderPersistenceService).saveAndComplete(any(), any());
         when(idempotencyService.markCompensationPending(eq(orderNumber), anyString()))
                 .thenAnswer(invocation -> finalStatus.compareAndSet(
                         OrderIdempotencyStatus.PROCESSING, OrderIdempotencyStatus.COMPENSATION_PENDING));
@@ -209,7 +205,7 @@ class OrderServiceTests {
             verify(inventoryClient, never()).release(anyString());
             verify(idempotencyService, times(1))
                     .markCompensationPending(eq(orderNumber), anyString());
-            verify(kafkaTemplate, times(1)).send(eq("order-placed"), any(OrderPlacedEvent.class));
+            verify(orderPersistenceService, times(2)).saveAndComplete(any(), any());
         } finally {
             executor.shutdownNow();
         }
@@ -230,7 +226,6 @@ class OrderServiceTests {
 
         verifyNoInteractions(orderPersistenceService);
         verify(inventoryClient, never()).release(anyString());
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -240,7 +235,7 @@ class OrderServiceTests {
         when(orderRepository.findByOrderNumber("order-batch")).thenReturn(Optional.empty());
         when(inventoryClient.reserve(any(InventoryReservationRequest.class)))
                 .thenReturn(new InventoryReservationResponse("order-batch", "RESERVED", "RESERVED", "Reserved"));
-        when(orderPersistenceService.saveAndComplete(any())).thenReturn(true);
+        when(orderPersistenceService.saveAndComplete(any(), any())).thenReturn(true);
 
         OrderRequest request = new OrderRequest(null, null, null, null, null,
                 new OrderRequest.UserDetails("Taylor", "Customer", "buyer@example.com"),
@@ -252,6 +247,7 @@ class OrderServiceTests {
         verify(inventoryClient, times(1)).reserve(argThat(reservation -> reservation.items() != null
                 && reservation.items().size() == 2
                 && reservation.items().getFirst().skuCode().equals("AIRPODS-PRO")));
+        ArgumentCaptor<OrderPlacedPayload> payloadCaptor = ArgumentCaptor.forClass(OrderPlacedPayload.class);
         verify(orderPersistenceService).saveAndComplete(argThat(order ->
                 order.getItems().size() == 2
                         && order.getItems().getFirst().getSkuCode().equals("AIRPODS-PRO")
@@ -259,12 +255,13 @@ class OrderServiceTests {
                         && order.getItems().stream()
                         .anyMatch(item -> item.getSkuCode().equals("IPHONE-15")
                                 && item.getQuantity() == 2
-                                && item.getLineTotal().compareTo(new BigDecimal("1598.00")) == 0)));
-        ArgumentCaptor<OrderPlacedEvent> eventCaptor = ArgumentCaptor.forClass(OrderPlacedEvent.class);
-        verify(kafkaTemplate).send(eq("order-placed"), eventCaptor.capture());
-        assertEquals(2, eventCaptor.getValue().getItems().size());
-        assertEquals("AIRPODS-PRO", eventCaptor.getValue().getItems().getFirst().getSkuCode().toString());
-        assertEquals("249", eventCaptor.getValue().getItems().getFirst().getUnitPrice().toString());
+                                && item.getLineTotal().compareTo(new BigDecimal("1598.00")) == 0)),
+                payloadCaptor.capture());
+        assertEquals(2, payloadCaptor.getValue().items().size());
+        assertEquals("AIRPODS-PRO", payloadCaptor.getValue().items().getFirst().skuCode());
+        assertEquals("249", payloadCaptor.getValue().items().getFirst().unitPrice());
+        verify(metrics).orderCreated();
+        verify(metrics).orderSucceeded();
     }
 
     @Test
@@ -289,7 +286,7 @@ class OrderServiceTests {
         when(inventoryClient.reserve(any(InventoryReservationRequest.class)))
                 .thenReturn(new InventoryReservationResponse(
                         "order-batch-failed", "RESERVED", "RESERVED", "Reserved"));
-        when(orderPersistenceService.saveAndComplete(any()))
+        when(orderPersistenceService.saveAndComplete(any(), any()))
                 .thenThrow(new DataAccessResourceFailureException("database unavailable"));
         when(idempotencyService.markCompensationPending(eq("order-batch-failed"), anyString())).thenReturn(true);
         when(inventoryClient.release("order-batch-failed"))
@@ -307,7 +304,6 @@ class OrderServiceTests {
                 && reservation.items().size() == 2));
         verify(inventoryClient, times(1)).release("order-batch-failed");
         verify(idempotencyService).markCompensated(eq("order-batch-failed"), anyString());
-        verify(kafkaTemplate, never()).send(eq("order-placed"), any(OrderPlacedEvent.class));
     }
 
     private OrderRequest validRequest() {

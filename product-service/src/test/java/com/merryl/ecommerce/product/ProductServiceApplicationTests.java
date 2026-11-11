@@ -108,6 +108,11 @@ class ProductServiceApplicationTests {
     void productCreationRequiresAdminAndDoesNotRestrictProductListing() throws Exception {
         String body = productJson("AUTH-" + UUID.randomUUID(), "Phone", 10);
 
+        HttpResponse<String> unauthenticatedRead = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/product")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, unauthenticatedRead.statusCode());
+
         RestAssured.given().contentType(ContentType.JSON).body(body)
                 .when().post("/api/product").then().statusCode(401);
         RestAssured.given().contentType(ContentType.JSON)

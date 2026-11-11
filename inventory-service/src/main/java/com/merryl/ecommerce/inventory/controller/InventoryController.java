@@ -51,14 +51,18 @@ public class InventoryController {
     @PostMapping("/stock/{skuCode}/add")
     @ResponseStatus(HttpStatus.OK)
     public InventoryStockResponse addStock(
-            @PathVariable String skuCode, @RequestBody InventoryAdjustmentRequest request) {
-        return inventoryService.addStock(skuCode, request == null ? null : request.quantity());
+            @PathVariable String skuCode,
+            @RequestHeader("Idempotency-Key") String operationKey,
+            @RequestBody InventoryAdjustmentRequest request) {
+        return inventoryService.addStock(operationKey, skuCode, request == null ? null : request.quantity());
     }
 
     @PostMapping("/stock/{skuCode}/remove")
     @ResponseStatus(HttpStatus.OK)
     public InventoryStockResponse removeStock(
-            @PathVariable String skuCode, @RequestBody InventoryAdjustmentRequest request) {
-        return inventoryService.removeStock(skuCode, request == null ? null : request.quantity());
+            @PathVariable String skuCode,
+            @RequestHeader("Idempotency-Key") String operationKey,
+            @RequestBody InventoryAdjustmentRequest request) {
+        return inventoryService.removeStock(operationKey, skuCode, request == null ? null : request.quantity());
     }
 }

@@ -55,4 +55,29 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus:/etc/prometheus:ro
+
+  tempo:
+    container_name: tempo
+    image: grafana/tempo:2.2.2
+    ports:
+      - "3110:3100" #tempo
+      - "9411:9411" #zipkin
+    volumes:
+      - ./docker/tempo/tempo.yml:/etc/tempo.yml:ro
+      - ./docker/tempo/tempo-data:/tmp/tempo
+    command: ["-config.file=/etc/tempo.yml"]
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:10.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: true
+    volumes:
+      - ./docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./docker/grafana/dashboard-provider.yml:/etc/grafana/provisioning/dashboards/dashboard-provider.yml:ro
+      - ./docker/grafana/dashboard.json:/var/lib/grafana/dashboards/ecommerce.json:ro

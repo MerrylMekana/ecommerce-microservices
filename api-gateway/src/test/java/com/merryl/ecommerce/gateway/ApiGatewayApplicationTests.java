@@ -19,7 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+		"product.service.url=http://localhost:1",
+		"order.service.url=http://localhost:1",
+		"inventory.service.url=http://localhost:1"
+})
 class ApiGatewayApplicationTests {
 
 	@LocalServerPort

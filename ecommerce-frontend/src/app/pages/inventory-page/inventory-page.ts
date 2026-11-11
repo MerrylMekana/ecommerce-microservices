@@ -12,6 +12,11 @@ interface ProductStockRow {
   stock: InventoryStock | null;
 }
 
+interface PendingAdjustment {
+  fingerprint: string;
+  key: string;
+}
+
 @Component({
   selector: 'app-inventory-page',
   standalone: true,
@@ -29,6 +34,7 @@ export class InventoryPageComponent implements OnInit {
   readonly feedback = signal('');
   readonly quantities = signal<Record<string, string>>({});
   readonly rowErrors = signal<Record<string, string>>({});
+  private readonly pendingAdjustments = new Map<string, PendingAdjustment>();
   readonly rows = computed<ProductStockRow[]>(() => this.products().map(product => ({
     product,
     stock: this.stocks().find(stock =>
@@ -87,7 +93,9 @@ export class InventoryPageComponent implements OnInit {
       return;
     }
     this.runAdjustment(row.product.skuCode, () =>
-      this.inventoryService.addStock(row.product.skuCode, quantity), 'Stock added');
+      this.inventoryService.addStock(
+        row.product.skuCode, quantity, this.operationKey(row.product.skuCode, 'ADD', quantity)
+      ), 'Stock added');
   }
 
   remove(row: ProductStockRow): void {
@@ -96,7 +104,9 @@ export class InventoryPageComponent implements OnInit {
       return;
     }
     this.runAdjustment(row.product.skuCode, () =>
-      this.inventoryService.removeStock(row.product.skuCode, quantity), 'Stock removed');
+      this.inventoryService.removeStock(
+        row.product.skuCode, quantity, this.operationKey(row.product.skuCode, 'REMOVE', quantity)
+      ), 'Stock removed');
   }
 
   private validQuantity(skuCode: string, allowZero: boolean): number | null {
@@ -132,6 +142,7 @@ export class InventoryPageComponent implements OnInit {
           return stocks.map(stock => stock.skuCode === skuCode ? updated : stock);
         });
         this.feedback.set(`${successMessage} for ${skuCode}. Current stock: ${updated.quantity}.`);
+        this.pendingAdjustments.delete(skuCode);
         this.quantities.update(values => ({ ...values, [skuCode]: '1' }));
         this.clearRowError(skuCode);
         this.busySku.set('');
@@ -139,9 +150,23 @@ export class InventoryPageComponent implements OnInit {
       error: error => {
         this.setRowError(skuCode, this.inventoryErrorMessage(error));
         this.feedback.set('');
+        if (error?.status !== 0 && error?.status < 500) {
+          this.pendingAdjustments.delete(skuCode);
+        }
         this.busySku.set('');
       }
     });
+  }
+
+  private operationKey(skuCode: string, operation: 'ADD' | 'REMOVE', quantity: number): string {
+    const fingerprint = `${operation}:${skuCode}:${quantity}`;
+    const pending = this.pendingAdjustments.get(skuCode);
+    if (pending?.fingerprint === fingerprint) {
+      return pending.key;
+    }
+    const key = crypto.randomUUID();
+    this.pendingAdjustments.set(skuCode, { fingerprint, key });
+    return key;
   }
 
   private inventoryErrorMessage(error: { status?: number; error?: { detail?: string } }): string {
